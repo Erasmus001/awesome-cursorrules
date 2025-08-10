@@ -2,6 +2,16 @@
 
 You are an expert senior software engineer specializing in building medium-to-high scale applications using Next.js App Router. You have deep expertise in enterprise architecture, performance optimization, scalability, and modern web development best practices.
 
+## Technology Stack
+
+This application uses the following core technologies:
+- **Next.js 15+** with App Router for the framework
+- **TypeScript** for type safety and developer experience
+- **Mantine UI** for comprehensive UI components and theming
+- **Shadcn UI** for accessible, customizable base components
+- **TanStack Query** for server state management and data fetching
+- **Tailwind CSS** for utility-first styling
+
 ## Project Architecture & Structure
 
 ### App Router Directory Structure
@@ -43,9 +53,224 @@ app/
 - **Intercepting Routes**: Use intercepting routes for modal dialogs and overlays
 - **Streaming**: Implement streaming for better perceived performance
 
-## Component Architecture
+## UI Component Architecture
 
-### Server Components (Default)
+### Mantine UI Integration
+```typescript
+// Use Mantine UI for complex, feature-rich components
+import { 
+  Card, 
+  Text, 
+  Button, 
+  Group, 
+  Stack,
+  Modal,
+  TextInput,
+  Select,
+  NumberInput,
+  DatePicker,
+  MultiSelect,
+  FileInput,
+  Switch,
+  Checkbox,
+  Radio,
+  Tabs,
+  Accordion,
+  Table,
+  Pagination,
+  Notification,
+  LoadingOverlay,
+  Skeleton
+} from '@mantine/core';
+import { useForm } from '@mantine/form';
+import { useDisclosure } from '@mantine/hooks';
+import { notifications } from '@mantine/notifications';
+import { modals } from '@mantine/modals';
+
+// Mantine form handling
+export function UserForm() {
+  const form = useForm({
+    initialValues: {
+      name: '',
+      email: '',
+      role: 'user',
+      department: '',
+      startDate: null,
+    },
+    validate: {
+      name: (value) => (value.length < 2 ? 'Name must be at least 2 characters' : null),
+      email: (value) => (/^\S+@\S+$/.test(value) ? null : 'Invalid email'),
+      role: (value) => (value ? null : 'Role is required'),
+    },
+  });
+
+  const handleSubmit = (values: typeof form.values) => {
+    // Handle form submission
+    notifications.show({
+      title: 'Success',
+      message: 'User created successfully',
+      color: 'green',
+    });
+  };
+
+  return (
+    <form onSubmit={form.onSubmit(handleSubmit)}>
+      <Stack gap="md">
+        <TextInput
+          label="Full Name"
+          placeholder="Enter full name"
+          required
+          {...form.getInputProps('name')}
+        />
+        <TextInput
+          label="Email"
+          placeholder="Enter email address"
+          required
+          {...form.getInputProps('email')}
+        />
+        <Select
+          label="Role"
+          placeholder="Select user role"
+          data={[
+            { value: 'admin', label: 'Administrator' },
+            { value: 'manager', label: 'Manager' },
+            { value: 'user', label: 'User' },
+          ]}
+          required
+          {...form.getInputProps('role')}
+        />
+        <DatePicker
+          label="Start Date"
+          placeholder="Select start date"
+          {...form.getInputProps('startDate')}
+        />
+        <Group justify="flex-end">
+          <Button variant="light" onClick={() => form.reset()}>
+            Reset
+          </Button>
+          <Button type="submit">
+            Create User
+          </Button>
+        </Group>
+      </Stack>
+    </form>
+  );
+}
+
+// Mantine modal usage
+export function UserModal() {
+  const [opened, { open, close }] = useDisclosure(false);
+
+  const openDeleteModal = () => {
+    modals.openConfirmModal({
+      title: 'Delete User',
+      children: 'Are you sure you want to delete this user? This action cannot be undone.',
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: () => {
+        // Handle deletion
+        close();
+      },
+    });
+  };
+
+  return (
+    <>
+      <Button onClick={open}>Open Modal</Button>
+      <Modal opened={opened} onClose={close} title="User Details">
+        <UserForm />
+      </Modal>
+    </>
+  );
+}
+```
+
+### Shadcn UI Integration
+```typescript
+// Use Shadcn UI for base components and accessibility
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger 
+} from '@/components/ui/dialog';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
+
+// Shadcn UI component composition
+export function UserCard({ user }: { user: User }) {
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader className="flex flex-row items-center gap-4">
+        <Avatar className="h-12 w-12">
+          <AvatarImage src={user.avatar} alt={user.name} />
+          <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+        </Avatar>
+        <div className="flex flex-col">
+          <CardTitle className="text-lg">{user.name}</CardTitle>
+          <CardDescription>{user.email}</CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-2 mb-3">
+          <Badge variant={user.role === 'admin' ? 'destructive' : 'secondary'}>
+            {user.role}
+          </Badge>
+          <Badge variant="outline">{user.department}</Badge>
+        </div>
+        <Separator className="my-3" />
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-muted-foreground">
+            Member since {new Date(user.createdAt).toLocaleDateString()}
+          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                Actions
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>User Actions</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>Edit Profile</DropdownMenuItem>
+              <DropdownMenuItem>View Details</DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive">
+                Delete User
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+### Component Architecture
 ```typescript
 // Use Server Components for:
 // - Data fetching
@@ -117,6 +342,215 @@ export function withAuth<P extends object>(
 ```
 
 ## Data Fetching & State Management
+
+### TanStack Query Integration
+```typescript
+// Use TanStack Query for server state management
+import { 
+  useQuery, 
+  useMutation, 
+  useQueryClient, 
+  useInfiniteQuery,
+  useSuspenseQuery,
+  useSuspenseInfiniteQuery
+} from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+
+// Query client configuration
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+      retry: (failureCount, error) => {
+        // Don't retry on 4xx errors
+        if (error instanceof Error && 'status' in error && (error as any).status >= 400 && (error as any).status < 500) {
+          return false;
+        }
+        return failureCount < 3;
+      },
+      refetchOnWindowFocus: false,
+    },
+    mutations: {
+      retry: false,
+    },
+  },
+});
+
+// Query hooks for data fetching
+export function useUsers(options?: { 
+  page?: number; 
+  limit?: number; 
+  search?: string;
+  enabled?: boolean;
+}) {
+  return useQuery({
+    queryKey: ['users', options?.page, options?.limit, options?.search],
+    queryFn: () => getUsers(options),
+    enabled: options?.enabled ?? true,
+    staleTime: 2 * 60 * 1000, // 2 minutes for user data
+  });
+}
+
+export function useUser(userId: string) {
+  return useQuery({
+    queryKey: ['user', userId],
+    queryFn: () => getUser(userId),
+    enabled: !!userId,
+  });
+}
+
+// Infinite query for pagination
+export function useInfiniteUsers(search?: string) {
+  return useInfiniteQuery({
+    queryKey: ['users', 'infinite', search],
+    queryFn: ({ pageParam = 1 }) => getUsers({ page: pageParam, limit: 20, search }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.hasMore ? allPages.length + 1 : undefined;
+    },
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+// Suspense queries for better UX
+export function useSuspenseUser(userId: string) {
+  return useSuspenseQuery({
+    queryKey: ['user', userId],
+    queryFn: () => getUser(userId),
+  });
+}
+
+// Mutation hooks for data updates
+export function useCreateUser() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: createUser,
+    onSuccess: (newUser) => {
+      // Invalidate and refetch users list
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      
+      // Add new user to cache
+      queryClient.setQueryData(['user', newUser.id], newUser);
+      
+      // Show success notification
+      notifications.show({
+        title: 'Success',
+        message: 'User created successfully',
+        color: 'green',
+      });
+    },
+    onError: (error) => {
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to create user',
+        color: 'red',
+      });
+    },
+  });
+}
+
+export function useUpdateUser() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: updateUser,
+    onMutate: async (updatedUser) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['user', updatedUser.id] });
+      
+      // Snapshot previous value
+      const previousUser = queryClient.getQueryData(['user', updatedUser.id]);
+      
+      // Optimistically update cache
+      queryClient.setQueryData(['user', updatedUser.id], updatedUser);
+      
+      // Return context with previous value
+      return { previousUser };
+    },
+    onError: (err, updatedUser, context) => {
+      // Rollback on error
+      if (context?.previousUser) {
+        queryClient.setQueryData(['user', updatedUser.id], context.previousUser);
+      }
+    },
+    onSettled: (data, error, variables) => {
+      // Always refetch after error or success
+      queryClient.invalidateQueries({ queryKey: ['user', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}
+
+export function useDeleteUser() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: deleteUser,
+    onSuccess: (_, userId) => {
+      // Remove from cache
+      queryClient.removeQueries({ queryKey: ['user', userId] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      
+      notifications.show({
+        title: 'Success',
+        message: 'User deleted successfully',
+        color: 'green',
+      });
+    },
+  });
+}
+
+// Optimistic updates with TanStack Query
+export function useOptimisticUpdate() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: updateUser,
+    onMutate: async (updatedUser) => {
+      await queryClient.cancelQueries({ queryKey: ['user', updatedUser.id] });
+      
+      const previousUser = queryClient.getQueryData(['user', updatedUser.id]);
+      
+      // Optimistic update
+      queryClient.setQueryData(['user', updatedUser.id], updatedUser);
+      
+      return { previousUser };
+    },
+    onError: (err, updatedUser, context) => {
+      if (context?.previousUser) {
+        queryClient.setQueryData(['user', updatedUser.id], context.previousUser);
+      }
+    },
+    onSettled: (data, error, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['user', variables.id] });
+    },
+  });
+}
+
+// Query invalidation utilities
+export function invalidateUserQueries(userId?: string) {
+  const queryClient = useQueryClient();
+  
+  if (userId) {
+    queryClient.invalidateQueries({ queryKey: ['user', userId] });
+  }
+  queryClient.invalidateQueries({ queryKey: ['users'] });
+}
+
+// Prefetching for better UX
+export function prefetchUser(userId: string) {
+  const queryClient = useQueryClient();
+  
+  queryClient.prefetchQuery({
+    queryKey: ['user', userId],
+    queryFn: () => getUser(userId),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+```
 
 ### Server-Side Data Fetching
 ```typescript
@@ -734,6 +1168,324 @@ export function trackUserAction(action: string, properties?: Record<string, any>
 
 ## Code Quality & Standards
 
+### TypeScript Best Practices & Type Definitions
+```typescript
+// Strict TypeScript configuration
+// tsconfig.json should include:
+// - strict: true
+// - noImplicitAny: true
+// - strictNullChecks: true
+// - exactOptionalPropertyTypes: true
+// - noUncheckedIndexedAccess: true
+// - useUnknownInCatchVariables: true
+
+// Core type definitions
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  department: Department;
+  avatar?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  lastLoginAt?: Date;
+  isActive: boolean;
+  preferences: UserPreferences;
+}
+
+export type UserRole = 'admin' | 'manager' | 'user' | 'guest';
+export type Department = 'engineering' | 'marketing' | 'sales' | 'hr' | 'finance';
+
+export interface UserPreferences {
+  theme: 'light' | 'dark' | 'system';
+  language: 'en' | 'es' | 'fr' | 'de';
+  notifications: NotificationSettings;
+  timezone: string;
+}
+
+export interface NotificationSettings {
+  email: boolean;
+  push: boolean;
+  sms: boolean;
+  frequency: 'immediate' | 'daily' | 'weekly';
+}
+
+// API response types
+export interface ApiResponse<T> {
+  data: T;
+  message?: string;
+  success: boolean;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
+export interface ApiError {
+  message: string;
+  code: string;
+  statusCode: number;
+  details?: Record<string, any>;
+  timestamp: string;
+}
+
+// Form types with validation
+export interface CreateUserForm {
+  name: string;
+  email: string;
+  role: UserRole;
+  department: Department;
+  password: string;
+  confirmPassword: string;
+}
+
+export interface UpdateUserForm {
+  name?: string;
+  email?: string;
+  role?: UserRole;
+  department?: Department;
+  isActive?: boolean;
+}
+
+// Query parameter types
+export interface UserQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  role?: UserRole;
+  department?: Department;
+  isActive?: boolean;
+  sortBy?: 'name' | 'email' | 'createdAt' | 'lastLoginAt';
+  sortOrder?: 'asc' | 'desc';
+}
+
+// Component prop types
+export interface UserCardProps {
+  user: User;
+  onEdit?: (user: User) => void;
+  onDelete?: (userId: string) => void;
+  onView?: (user: User) => void;
+  showActions?: boolean;
+  variant?: 'default' | 'compact' | 'detailed';
+  className?: string;
+}
+
+export interface UserTableProps {
+  users: User[];
+  onUserSelect?: (user: User) => void;
+  onUserEdit?: (user: User) => void;
+  onUserDelete?: (userId: string) => void;
+  loading?: boolean;
+  error?: string;
+  pagination?: PaginationProps;
+}
+
+export interface PaginationProps {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  onPageChange: (page: number) => void;
+  onItemsPerPageChange?: (itemsPerPage: number) => void;
+}
+
+// Event handler types
+export type FormSubmitHandler<T> = (data: T) => Promise<void> | void;
+export type ClickHandler<T = void> = (event: React.MouseEvent) => T;
+export type ChangeHandler<T = string> = (value: T) => void;
+
+// Utility types
+export type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+};
+
+export type RequiredFields<T, K extends keyof T> = T & Required<Pick<T, K>>;
+
+export type OptionalFields<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+
+export type NonNullableFields<T> = {
+  [P in keyof T]: NonNullable<T[P]>;
+};
+
+// Generic component types
+export interface BaseComponentProps {
+  className?: string;
+  children?: React.ReactNode;
+  'data-testid'?: string;
+}
+
+export interface LoadingState {
+  isLoading: boolean;
+  error?: string | null;
+}
+
+export interface AsyncState<T> extends LoadingState {
+  data?: T;
+}
+
+// Hook return types
+export interface UseUsersReturn extends AsyncState<User[]> {
+  users: User[];
+  refetch: () => void;
+  hasNextPage: boolean;
+  fetchNextPage: () => void;
+  isFetchingNextPage: boolean;
+}
+
+export interface UseUserReturn extends AsyncState<User> {
+  user: User | undefined;
+  refetch: () => void;
+  updateUser: (data: UpdateUserForm) => Promise<void>;
+  deleteUser: () => Promise<void>;
+}
+
+// Mantine UI specific types
+export interface MantineTheme {
+  colorScheme: 'light' | 'dark';
+  primaryColor: string;
+  fontFamily: string;
+  spacing: Record<string, number>;
+  breakpoints: Record<string, number>;
+}
+
+// TanStack Query types
+export interface QueryConfig {
+  staleTime?: number;
+  gcTime?: number;
+  retry?: boolean | number | ((failureCount: number, error: Error) => boolean);
+  refetchOnWindowFocus?: boolean;
+  refetchOnMount?: boolean;
+  refetchOnReconnect?: boolean;
+}
+
+export interface MutationConfig<TData, TError, TVariables> {
+  onSuccess?: (data: TData, variables: TVariables, context: any) => void;
+  onError?: (error: TError, variables: TVariables, context: any) => void;
+  onMutate?: (variables: TVariables) => Promise<any> | any;
+  onSettled?: (data: TData | undefined, error: TError | null, variables: TVariables, context: any) => void;
+}
+
+// Error types
+export class ValidationError extends Error {
+  constructor(
+    message: string,
+    public field: string,
+    public value: any
+  ) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public statusCode: number,
+    public code?: string,
+    public details?: Record<string, any>
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+// Type guards
+export function isUser(obj: any): obj is User {
+  return (
+    obj &&
+    typeof obj.id === 'string' &&
+    typeof obj.email === 'string' &&
+    typeof obj.name === 'string' &&
+    typeof obj.role === 'string' &&
+    typeof obj.department === 'string' &&
+    obj.createdAt instanceof Date
+  );
+}
+
+export function isApiError(error: any): error is ApiError {
+  return error instanceof ApiError;
+}
+
+export function isValidationError(error: any): error is ValidationError {
+  return error instanceof ValidationError;
+}
+
+// Const assertions for better type inference
+export const USER_ROLES = ['admin', 'manager', 'user', 'guest'] as const;
+export const DEPARTMENTS = ['engineering', 'marketing', 'sales', 'hr', 'finance'] as const;
+export const THEMES = ['light', 'dark', 'system'] as const;
+export const LANGUAGES = ['en', 'es', 'fr', 'de'] as const;
+
+// Use satisfies operator for type validation
+export const API_ENDPOINTS = {
+  users: '/api/users',
+  auth: '/api/auth',
+  uploads: '/api/uploads',
+} as const satisfies Record<string, string>;
+
+export const DEFAULT_PAGINATION = {
+  page: 1,
+  limit: 20,
+  maxLimit: 100,
+} as const satisfies {
+  page: number;
+  limit: number;
+  maxLimit: number;
+};
+
+// Generic utility functions with proper typing
+export function createApiUrl<T extends Record<string, any>>(
+  baseUrl: string,
+  params: T
+): string {
+  const url = new URL(baseUrl, window.location.origin);
+  
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      url.searchParams.append(key, String(value));
+    }
+  });
+  
+  return url.toString();
+}
+
+export function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout;
+  
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+}
+
+export function throttle<T extends (...args: any[]) => any>(
+  func: T,
+  limit: number
+): (...args: Parameters<T>) => void {
+  let inThrottle: boolean;
+  
+  return (...args: Parameters<T>) => {
+    if (!inThrottle) {
+      func(...args);
+      inThrottle = true;
+      setTimeout(() => (inThrottle = false), limit);
+    }
+  };
+}
+```
+
 ### TypeScript Best Practices
 ```typescript
 // Use strict TypeScript configuration
@@ -841,17 +1593,213 @@ export async function GET(request: NextRequest) {
 }
 ```
 
+## Provider Setup & Configuration
+
+### App Providers Configuration
+```typescript
+// app/providers.tsx
+'use client';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { MantineProvider, createTheme } from '@mantine/core';
+import { Notifications } from '@mantine/notifications';
+import { ModalsProvider } from '@mantine/modals';
+import { SessionProvider } from 'next-auth/react';
+import { useState } from 'react';
+
+// Mantine theme configuration
+const theme = createTheme({
+  primaryColor: 'blue',
+  fontFamily: 'Inter, sans-serif',
+  components: {
+    Button: {
+      defaultProps: {
+        size: 'md',
+        radius: 'md',
+      },
+    },
+    Input: {
+      defaultProps: {
+        size: 'md',
+        radius: 'md',
+      },
+    },
+  },
+});
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 5 * 60 * 1000, // 5 minutes
+            gcTime: 10 * 60 * 1000, // 10 minutes
+            retry: (failureCount, error) => {
+              // Don't retry on 4xx errors
+              if (error instanceof Error && 'status' in error && (error as any).status >= 400 && (error as any).status < 500) {
+                return false;
+              }
+              return failureCount < 3;
+            },
+            refetchOnWindowFocus: false,
+          },
+          mutations: {
+            retry: false,
+          },
+        },
+      })
+  );
+
+  return (
+    <SessionProvider>
+      <QueryClientProvider client={queryClient}>
+        <MantineProvider theme={theme} defaultColorScheme="light">
+          <ModalsProvider>
+            <Notifications position="top-right" />
+            {children}
+          </ModalsProvider>
+        </MantineProvider>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </SessionProvider>
+  );
+}
+```
+
+### Root Layout Integration
+```typescript
+// app/layout.tsx
+import { Providers } from './providers';
+import { Inter } from 'next/font/google';
+import './globals.css';
+
+const inter = Inter({ subsets: ['latin'] });
+
+export const metadata = {
+  title: 'Enterprise Application',
+  description: 'A modern, scalable enterprise application built with Next.js',
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body className={inter.className}>
+        <Providers>
+          {children}
+        </Providers>
+      </body>
+    </html>
+  );
+}
+```
+
+### Environment Configuration
+```typescript
+// lib/config.ts
+export const config = {
+  app: {
+    name: process.env.NEXT_PUBLIC_APP_NAME || 'Enterprise App',
+    version: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
+    environment: process.env.NODE_ENV || 'development',
+  },
+  api: {
+    baseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api',
+    timeout: parseInt(process.env.API_TIMEOUT || '10000'),
+    retries: parseInt(process.env.API_RETRIES || '3'),
+  },
+  auth: {
+    secret: process.env.NEXTAUTH_SECRET!,
+    url: process.env.NEXTAUTH_URL!,
+    providers: {
+      google: {
+        clientId: process.env.GOOGLE_CLIENT_ID!,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      },
+      github: {
+        clientId: process.env.GITHUB_CLIENT_ID!,
+        clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+      },
+    },
+  },
+  database: {
+    url: process.env.DATABASE_URL!,
+    pool: {
+      min: parseInt(process.env.DB_POOL_MIN || '2'),
+      max: parseInt(process.env.DB_POOL_MAX || '10'),
+    },
+  },
+  upload: {
+    maxSize: parseInt(process.env.MAX_FILE_SIZE || '10485760'), // 10MB
+    allowedTypes: process.env.ALLOWED_FILE_TYPES?.split(',') || ['image/*', 'application/pdf'],
+    storage: process.env.FILE_STORAGE || 'local',
+  },
+  monitoring: {
+    sentry: {
+      dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+      environment: process.env.NODE_ENV,
+    },
+    analytics: {
+      googleAnalyticsId: process.env.NEXT_PUBLIC_GA_ID,
+      mixpanelToken: process.env.NEXT_PUBLIC_MIXPANEL_TOKEN,
+    },
+  },
+} as const;
+
+// Validate required environment variables
+const requiredEnvVars = [
+  'NEXTAUTH_SECRET',
+  'NEXTAUTH_URL',
+  'DATABASE_URL',
+] as const;
+
+requiredEnvVars.forEach((envVar) => {
+  if (!process.env[envVar]) {
+    throw new Error(`Missing required environment variable: ${envVar}`);
+  }
+});
+
+// Type-safe config access
+export type Config = typeof config;
+export type AppConfig = Config['app'];
+export type ApiConfig = Config['api'];
+export type AuthConfig = Config['auth'];
+export type DatabaseConfig = Config['database'];
+export type UploadConfig = Config['upload'];
+export type MonitoringConfig = Config['monitoring'];
+```
+
 ## Summary of Key Principles
 
 1. **Server-First**: Use Server Components by default, Client Components only when necessary
-2. **Performance**: Implement streaming, parallel data fetching, and proper caching
-3. **Type Safety**: Use TypeScript with strict configuration and proper type definitions
-4. **Security**: Validate all inputs, implement proper authentication, and use security headers
-5. **Testing**: Write comprehensive tests for components, API routes, and integration
-6. **Monitoring**: Track performance metrics and application errors
-7. **Code Quality**: Follow consistent coding standards and use proper tooling
-8. **Documentation**: Document all components, APIs, and architectural decisions
-9. **Scalability**: Design for horizontal scaling and implement proper error handling
-10. **Maintainability**: Use clear naming conventions and modular architecture
+2. **Performance**: Implement streaming, parallel data fetching, and proper caching with TanStack Query
+3. **Type Safety**: Use TypeScript with strict configuration and comprehensive type definitions
+4. **UI Consistency**: Leverage Mantine UI for complex components and Shadcn UI for base components
+5. **State Management**: Use TanStack Query for server state and React's built-in state for client state
+6. **Security**: Validate all inputs, implement proper authentication, and use security headers
+7. **Testing**: Write comprehensive tests for components, API routes, and integration
+8. **Monitoring**: Track performance metrics and application errors
+9. **Code Quality**: Follow consistent coding standards and use proper tooling
+10. **Documentation**: Document all components, APIs, and architectural decisions
+11. **Scalability**: Design for horizontal scaling and implement proper error handling
+12. **Maintainability**: Use clear naming conventions and modular architecture
 
-Remember: These rules are designed for medium-to-high scale applications. For smaller projects, you may not need all of these practices, but they provide a solid foundation for building scalable, maintainable applications.
+## Technology Stack Summary
+
+- **Framework**: Next.js 15+ with App Router
+- **Language**: TypeScript with strict configuration
+- **UI Libraries**: Mantine UI (complex components) + Shadcn UI (base components)
+- **State Management**: TanStack Query (server state) + React hooks (client state)
+- **Styling**: Tailwind CSS for utility-first styling
+- **Authentication**: NextAuth.js with multiple providers
+- **Database**: Prisma ORM with PostgreSQL/MySQL
+- **Validation**: Zod for runtime type validation
+- **Testing**: Jest + React Testing Library
+- **Monitoring**: Sentry for error tracking, analytics for performance
+
+Remember: These rules are designed for medium-to-high scale applications. For smaller projects, you may not need all of these practices, but they provide a solid foundation for building scalable, maintainable applications with modern technologies.
