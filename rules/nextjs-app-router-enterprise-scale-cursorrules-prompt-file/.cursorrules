@@ -1,0 +1,1805 @@
+# Next.js App Router Enterprise Scale Development Rules
+
+You are an expert senior software engineer specializing in building medium-to-high scale applications using Next.js App Router. You have deep expertise in enterprise architecture, performance optimization, scalability, and modern web development best practices.
+
+## Technology Stack
+
+This application uses the following core technologies:
+- **Next.js 15+** with App Router for the framework
+- **TypeScript** for type safety and developer experience
+- **Mantine UI** for comprehensive UI components and theming
+- **Shadcn UI** for accessible, customizable base components
+- **TanStack Query** for server state management and data fetching
+- **Tailwind CSS** for utility-first styling
+
+## Project Architecture & Structure
+
+### App Router Directory Structure
+```
+app/
+├── (auth)/                    # Route groups for authentication
+│   ├── login/
+│   ├── register/
+│   └── layout.tsx
+├── (dashboard)/               # Route groups for dashboard
+│   ├── overview/
+│   ├── analytics/
+│   └── layout.tsx
+├── api/                       # API routes
+│   ├── auth/
+│   ├── users/
+│   └── middleware.ts
+├── components/                # Shared components
+│   ├── ui/                    # Base UI components
+│   ├── forms/                 # Form components
+│   ├── layout/                # Layout components
+│   └── providers/             # Context providers
+├── hooks/                     # Custom hooks
+├── lib/                       # Utility functions and configurations
+│   ├── auth.ts
+│   ├── db.ts
+│   ├── utils.ts
+│   └── validations.ts
+├── middleware.ts              # Next.js middleware
+├── globals.css                # Global styles
+├── layout.tsx                 # Root layout
+└── page.tsx                   # Home page
+```
+
+### Key Architectural Principles
+- **Server-First Approach**: Use Server Components by default, Client Components only when necessary
+- **Route Groups**: Organize related routes using parentheses notation for better code organization
+- **Parallel Routes**: Implement parallel routes for complex layouts (e.g., dashboard with sidebar + main content)
+- **Intercepting Routes**: Use intercepting routes for modal dialogs and overlays
+- **Streaming**: Implement streaming for better perceived performance
+
+## UI Component Architecture
+
+### Mantine UI Integration
+```typescript
+// Use Mantine UI for complex, feature-rich components
+import { 
+  Card, 
+  Text, 
+  Button, 
+  Group, 
+  Stack,
+  Modal,
+  TextInput,
+  Select,
+  NumberInput,
+  DatePicker,
+  MultiSelect,
+  FileInput,
+  Switch,
+  Checkbox,
+  Radio,
+  Tabs,
+  Accordion,
+  Table,
+  Pagination,
+  Notification,
+  LoadingOverlay,
+  Skeleton
+} from '@mantine/core';
+import { useForm } from '@mantine/form';
+import { useDisclosure } from '@mantine/hooks';
+import { notifications } from '@mantine/notifications';
+import { modals } from '@mantine/modals';
+
+// Mantine form handling
+export function UserForm() {
+  const form = useForm({
+    initialValues: {
+      name: '',
+      email: '',
+      role: 'user',
+      department: '',
+      startDate: null,
+    },
+    validate: {
+      name: (value) => (value.length < 2 ? 'Name must be at least 2 characters' : null),
+      email: (value) => (/^\S+@\S+$/.test(value) ? null : 'Invalid email'),
+      role: (value) => (value ? null : 'Role is required'),
+    },
+  });
+
+  const handleSubmit = (values: typeof form.values) => {
+    // Handle form submission
+    notifications.show({
+      title: 'Success',
+      message: 'User created successfully',
+      color: 'green',
+    });
+  };
+
+  return (
+    <form onSubmit={form.onSubmit(handleSubmit)}>
+      <Stack gap="md">
+        <TextInput
+          label="Full Name"
+          placeholder="Enter full name"
+          required
+          {...form.getInputProps('name')}
+        />
+        <TextInput
+          label="Email"
+          placeholder="Enter email address"
+          required
+          {...form.getInputProps('email')}
+        />
+        <Select
+          label="Role"
+          placeholder="Select user role"
+          data={[
+            { value: 'admin', label: 'Administrator' },
+            { value: 'manager', label: 'Manager' },
+            { value: 'user', label: 'User' },
+          ]}
+          required
+          {...form.getInputProps('role')}
+        />
+        <DatePicker
+          label="Start Date"
+          placeholder="Select start date"
+          {...form.getInputProps('startDate')}
+        />
+        <Group justify="flex-end">
+          <Button variant="light" onClick={() => form.reset()}>
+            Reset
+          </Button>
+          <Button type="submit">
+            Create User
+          </Button>
+        </Group>
+      </Stack>
+    </form>
+  );
+}
+
+// Mantine modal usage
+export function UserModal() {
+  const [opened, { open, close }] = useDisclosure(false);
+
+  const openDeleteModal = () => {
+    modals.openConfirmModal({
+      title: 'Delete User',
+      children: 'Are you sure you want to delete this user? This action cannot be undone.',
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: () => {
+        // Handle deletion
+        close();
+      },
+    });
+  };
+
+  return (
+    <>
+      <Button onClick={open}>Open Modal</Button>
+      <Modal opened={opened} onClose={close} title="User Details">
+        <UserForm />
+      </Modal>
+    </>
+  );
+}
+```
+
+### Shadcn UI Integration
+```typescript
+// Use Shadcn UI for base components and accessibility
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger 
+} from '@/components/ui/dialog';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
+
+// Shadcn UI component composition
+export function UserCard({ user }: { user: User }) {
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader className="flex flex-row items-center gap-4">
+        <Avatar className="h-12 w-12">
+          <AvatarImage src={user.avatar} alt={user.name} />
+          <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+        </Avatar>
+        <div className="flex flex-col">
+          <CardTitle className="text-lg">{user.name}</CardTitle>
+          <CardDescription>{user.email}</CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-2 mb-3">
+          <Badge variant={user.role === 'admin' ? 'destructive' : 'secondary'}>
+            {user.role}
+          </Badge>
+          <Badge variant="outline">{user.department}</Badge>
+        </div>
+        <Separator className="my-3" />
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-muted-foreground">
+            Member since {new Date(user.createdAt).toLocaleDateString()}
+          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                Actions
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>User Actions</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>Edit Profile</DropdownMenuItem>
+              <DropdownMenuItem>View Details</DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive">
+                Delete User
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+### Component Architecture
+```typescript
+// Use Server Components for:
+// - Data fetching
+// - Database queries
+// - File system access
+// - API calls
+// - Authentication checks
+
+export default async function UserProfile({ userId }: { userId: string }) {
+  const user = await getUser(userId);
+  const posts = await getUserPosts(userId);
+  
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      <PostsList posts={posts} />
+    </div>
+  );
+}
+```
+
+### Client Components (When Needed)
+```typescript
+'use client';
+
+// Use Client Components for:
+// - Interactivity (onClick, onChange)
+// - Browser APIs (localStorage, window)
+// - Event listeners
+// - State management
+// - Third-party libraries requiring client-side execution
+
+import { useState } from 'react';
+
+export default function InteractiveForm() {
+  const [formData, setFormData] = useState({});
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Handle form submission
+  };
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      {/* Form fields */}
+    </form>
+  );
+}
+```
+
+### Component Composition Patterns
+```typescript
+// Container/Presentational Pattern
+export default function UserListContainer() {
+  const users = await getUsers();
+  return <UserList users={users} />;
+}
+
+// Higher-Order Components for cross-cutting concerns
+export function withAuth<P extends object>(
+  Component: React.ComponentType<P>
+) {
+  return async function AuthenticatedComponent(props: P) {
+    const session = await getSession();
+    if (!session) redirect('/login');
+    return <Component {...props} />;
+  };
+}
+```
+
+## Data Fetching & State Management
+
+### TanStack Query Integration
+```typescript
+// Use TanStack Query for server state management
+import { 
+  useQuery, 
+  useMutation, 
+  useQueryClient, 
+  useInfiniteQuery,
+  useSuspenseQuery,
+  useSuspenseInfiniteQuery
+} from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+
+// Query client configuration
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+      retry: (failureCount, error) => {
+        // Don't retry on 4xx errors
+        if (error instanceof Error && 'status' in error && (error as any).status >= 400 && (error as any).status < 500) {
+          return false;
+        }
+        return failureCount < 3;
+      },
+      refetchOnWindowFocus: false,
+    },
+    mutations: {
+      retry: false,
+    },
+  },
+});
+
+// Query hooks for data fetching
+export function useUsers(options?: { 
+  page?: number; 
+  limit?: number; 
+  search?: string;
+  enabled?: boolean;
+}) {
+  return useQuery({
+    queryKey: ['users', options?.page, options?.limit, options?.search],
+    queryFn: () => getUsers(options),
+    enabled: options?.enabled ?? true,
+    staleTime: 2 * 60 * 1000, // 2 minutes for user data
+  });
+}
+
+export function useUser(userId: string) {
+  return useQuery({
+    queryKey: ['user', userId],
+    queryFn: () => getUser(userId),
+    enabled: !!userId,
+  });
+}
+
+// Infinite query for pagination
+export function useInfiniteUsers(search?: string) {
+  return useInfiniteQuery({
+    queryKey: ['users', 'infinite', search],
+    queryFn: ({ pageParam = 1 }) => getUsers({ page: pageParam, limit: 20, search }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.hasMore ? allPages.length + 1 : undefined;
+    },
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+// Suspense queries for better UX
+export function useSuspenseUser(userId: string) {
+  return useSuspenseQuery({
+    queryKey: ['user', userId],
+    queryFn: () => getUser(userId),
+  });
+}
+
+// Mutation hooks for data updates
+export function useCreateUser() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: createUser,
+    onSuccess: (newUser) => {
+      // Invalidate and refetch users list
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      
+      // Add new user to cache
+      queryClient.setQueryData(['user', newUser.id], newUser);
+      
+      // Show success notification
+      notifications.show({
+        title: 'Success',
+        message: 'User created successfully',
+        color: 'green',
+      });
+    },
+    onError: (error) => {
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to create user',
+        color: 'red',
+      });
+    },
+  });
+}
+
+export function useUpdateUser() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: updateUser,
+    onMutate: async (updatedUser) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['user', updatedUser.id] });
+      
+      // Snapshot previous value
+      const previousUser = queryClient.getQueryData(['user', updatedUser.id]);
+      
+      // Optimistically update cache
+      queryClient.setQueryData(['user', updatedUser.id], updatedUser);
+      
+      // Return context with previous value
+      return { previousUser };
+    },
+    onError: (err, updatedUser, context) => {
+      // Rollback on error
+      if (context?.previousUser) {
+        queryClient.setQueryData(['user', updatedUser.id], context.previousUser);
+      }
+    },
+    onSettled: (data, error, variables) => {
+      // Always refetch after error or success
+      queryClient.invalidateQueries({ queryKey: ['user', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}
+
+export function useDeleteUser() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: deleteUser,
+    onSuccess: (_, userId) => {
+      // Remove from cache
+      queryClient.removeQueries({ queryKey: ['user', userId] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      
+      notifications.show({
+        title: 'Success',
+        message: 'User deleted successfully',
+        color: 'green',
+      });
+    },
+  });
+}
+
+// Optimistic updates with TanStack Query
+export function useOptimisticUpdate() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: updateUser,
+    onMutate: async (updatedUser) => {
+      await queryClient.cancelQueries({ queryKey: ['user', updatedUser.id] });
+      
+      const previousUser = queryClient.getQueryData(['user', updatedUser.id]);
+      
+      // Optimistic update
+      queryClient.setQueryData(['user', updatedUser.id], updatedUser);
+      
+      return { previousUser };
+    },
+    onError: (err, updatedUser, context) => {
+      if (context?.previousUser) {
+        queryClient.setQueryData(['user', updatedUser.id], context.previousUser);
+      }
+    },
+    onSettled: (data, error, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['user', variables.id] });
+    },
+  });
+}
+
+// Query invalidation utilities
+export function invalidateUserQueries(userId?: string) {
+  const queryClient = useQueryClient();
+  
+  if (userId) {
+    queryClient.invalidateQueries({ queryKey: ['user', userId] });
+  }
+  queryClient.invalidateQueries({ queryKey: ['users'] });
+}
+
+// Prefetching for better UX
+export function prefetchUser(userId: string) {
+  const queryClient = useQueryClient();
+  
+  queryClient.prefetchQuery({
+    queryKey: ['user', userId],
+    queryFn: () => getUser(userId),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+```
+
+### Server-Side Data Fetching
+```typescript
+// Use React's built-in data fetching
+export default async function DashboardPage() {
+  // Parallel data fetching for better performance
+  const [users, posts, analytics] = await Promise.all([
+    getUsers(),
+    getPosts(),
+    getAnalytics()
+  ]);
+  
+  return (
+    <Dashboard 
+      users={users} 
+      posts={posts} 
+      analytics={analytics} 
+    />
+  );
+}
+
+// Implement proper error handling
+export default async function UserPage({ params }: { params: { id: string } }) {
+  try {
+    const user = await getUser(params.id);
+    if (!user) notFound();
+    
+    return <UserProfile user={user} />;
+  } catch (error) {
+    // Log error for monitoring
+    console.error('Failed to fetch user:', error);
+    throw new Error('Failed to load user profile');
+  }
+}
+```
+
+### Client-Side State Management
+```typescript
+// Use React's built-in state management
+'use client';
+
+import { useOptimistic, useTransition } from 'react';
+
+export function OptimisticUpdate() {
+  const [isPending, startTransition] = useTransition();
+  const [optimisticData, addOptimisticData] = useOptimistic();
+  
+  const handleUpdate = async (newData: any) => {
+    addOptimisticData(newData); // Immediate UI update
+    
+    startTransition(async () => {
+      await updateData(newData); // Actual API call
+    });
+  };
+  
+  return (
+    <div>
+      {isPending && <LoadingSpinner />}
+      {/* Render optimistic data */}
+    </div>
+  );
+}
+```
+
+### Global State Management
+```typescript
+// For complex state, use Zustand or Jotai
+// Avoid Redux for most cases - React's built-in state is sufficient
+
+import { create } from 'zustand';
+
+interface AppState {
+  user: User | null;
+  theme: 'light' | 'dark';
+  setUser: (user: User | null) => void;
+  setTheme: (theme: 'light' | 'dark') => void;
+}
+
+export const useAppStore = create<AppState>((set) => ({
+  user: null,
+  theme: 'light',
+  setUser: (user) => set({ user }),
+  setTheme: (theme) => set({ theme }),
+}));
+```
+
+## Performance Optimization
+
+### Image Optimization
+```typescript
+import Image from 'next/image';
+
+// Always use Next.js Image component
+export function OptimizedImage({ src, alt, ...props }: ImageProps) {
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      width={800}
+      height={600}
+      placeholder="blur"
+      blurDataURL="data:image/jpeg;base64,..."
+      priority={props.priority}
+      {...props}
+    />
+  );
+}
+```
+
+### Code Splitting & Lazy Loading
+```typescript
+// Dynamic imports for code splitting
+import dynamic from 'next/dynamic';
+
+const HeavyComponent = dynamic(() => import('./HeavyComponent'), {
+  loading: () => <Skeleton />,
+  ssr: false, // Only if component requires browser APIs
+});
+
+// Lazy load routes
+const Dashboard = dynamic(() => import('./Dashboard'), {
+  loading: () => <DashboardSkeleton />,
+});
+```
+
+### Caching Strategies
+```typescript
+// Implement proper caching for data fetching
+export async function getUsers() {
+  const users = await db.users.findMany({
+    cache: 'force-cache', // Default caching
+  });
+  return users;
+}
+
+export async function getRealTimeData() {
+  const data = await fetch('/api/realtime', {
+    cache: 'no-store', // No caching for real-time data
+  });
+  return data.json();
+}
+
+export async function getRevalidatedData() {
+  const data = await fetch('/api/data', {
+    next: { revalidate: 3600 }, // Revalidate every hour
+  });
+  return data.json();
+}
+```
+
+## API Design & Route Handlers
+
+### RESTful API Structure
+```typescript
+// app/api/users/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    
+    const users = await getUsers({ page, limit });
+    
+    return NextResponse.json({
+      data: users,
+      pagination: { page, limit, total: users.length }
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Failed to fetch users' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const validatedData = userSchema.parse(body);
+    
+    const user = await createUser(validatedData);
+    
+    return NextResponse.json(user, { status: 201 });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: error.errors },
+        { status: 400 }
+      );
+    }
+    
+    return NextResponse.json(
+      { error: 'Failed to create user' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+### API Middleware & Validation
+```typescript
+// app/api/middleware.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth } from '@/lib/auth';
+
+export async function middleware(request: NextRequest) {
+  // Rate limiting
+  const ip = request.ip || 'unknown';
+  const rateLimit = await checkRateLimit(ip);
+  
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded' },
+      { status: 429 }
+    );
+  }
+  
+  // Authentication for protected routes
+  if (request.nextUrl.pathname.startsWith('/api/protected')) {
+    const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
+    try {
+      const user = await verifyAuth(token);
+      request.headers.set('x-user-id', user.id);
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'Invalid token' },
+        { status: 401 }
+      );
+    }
+  }
+  
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: '/api/:path*',
+};
+```
+
+## Authentication & Authorization
+
+### Authentication Implementation
+```typescript
+// lib/auth.ts
+import { NextAuthOptions } from 'next-auth';
+import { PrismaAdapter } from '@auth/prisma-adapter';
+import { prisma } from '@/lib/db';
+
+export const authOptions: NextAuthOptions = {
+  adapter: PrismaAdapter(prisma),
+  providers: [
+    // Configure your providers
+  ],
+  callbacks: {
+    async session({ session, user }) {
+      if (session.user) {
+        session.user.id = user.id;
+        session.user.role = user.role;
+      }
+      return session;
+    },
+    async jwt({ token, user }) {
+      if (user) {
+        token.role = user.role;
+      }
+      return token;
+    },
+  },
+  pages: {
+    signIn: '/auth/signin',
+    error: '/auth/error',
+  },
+};
+```
+
+### Route Protection
+```typescript
+// components/auth/ProtectedRoute.tsx
+'use client';
+
+import { useSession } from 'next-auth/react';
+import { redirect } from 'next/navigation';
+
+export function ProtectedRoute({ 
+  children, 
+  requiredRole 
+}: { 
+  children: React.ReactNode;
+  requiredRole?: string;
+}) {
+  const { data: session, status } = useSession();
+  
+  if (status === 'loading') {
+    return <LoadingSpinner />;
+  }
+  
+  if (!session) {
+    redirect('/auth/signin');
+  }
+  
+  if (requiredRole && session.user.role !== requiredRole) {
+    redirect('/unauthorized');
+  }
+  
+  return <>{children}</>;
+}
+```
+
+## Error Handling & Monitoring
+
+### Error Boundaries
+```typescript
+// app/error.tsx
+'use client';
+
+import { useEffect } from 'react';
+
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  useEffect(() => {
+    // Log error to monitoring service
+    console.error('Page error:', error);
+    
+    // Send to error tracking service
+    logError(error);
+  }, [error]);
+  
+  return (
+    <div className="error-container">
+      <h2>Something went wrong!</h2>
+      <p>{error.message}</p>
+      <button onClick={reset}>Try again</button>
+    </div>
+  );
+}
+```
+
+### Global Error Handling
+```typescript
+// lib/error-handling.ts
+export class AppError extends Error {
+  constructor(
+    message: string,
+    public statusCode: number = 500,
+    public code?: string
+  ) {
+    super(message);
+    this.name = 'AppError';
+  }
+}
+
+export function handleError(error: unknown): AppError {
+  if (error instanceof AppError) {
+    return error;
+  }
+  
+  if (error instanceof Error) {
+    return new AppError(error.message);
+  }
+  
+  return new AppError('An unexpected error occurred');
+}
+
+export function logError(error: Error, context?: Record<string, any>) {
+  // Send to error monitoring service (Sentry, LogRocket, etc.)
+  console.error('Application error:', {
+    message: error.message,
+    stack: error.stack,
+    context,
+    timestamp: new Date().toISOString(),
+  });
+}
+```
+
+## Testing Strategy
+
+### Unit Testing
+```typescript
+// __tests__/components/UserProfile.test.tsx
+import { render, screen } from '@testing-library/react';
+import { UserProfile } from '@/components/UserProfile';
+
+// Mock Next.js router
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+  }),
+}));
+
+describe('UserProfile', () => {
+  it('renders user information correctly', () => {
+    const mockUser = {
+      id: '1',
+      name: 'John Doe',
+      email: 'john@example.com',
+    };
+    
+    render(<UserProfile user={mockUser} />);
+    
+    expect(screen.getByText('John Doe')).toBeInTheDocument();
+    expect(screen.getByText('john@example.com')).toBeInTheDocument();
+  });
+});
+```
+
+### Integration Testing
+```typescript
+// __tests__/api/users.test.ts
+import { createMocks } from 'node-mocks-http';
+import { GET, POST } from '@/app/api/users/route';
+
+describe('/api/users', () => {
+  it('GET returns users list', async () => {
+    const { req, res } = createMocks({
+      method: 'GET',
+      query: { page: '1', limit: '10' },
+    });
+    
+    await GET(req, res);
+    
+    expect(res._getStatusCode()).toBe(200);
+    const data = JSON.parse(res._getData());
+    expect(data).toHaveProperty('data');
+    expect(data).toHaveProperty('pagination');
+  });
+});
+```
+
+## Deployment & DevOps
+
+### Environment Configuration
+```typescript
+// lib/config.ts
+export const config = {
+  database: {
+    url: process.env.DATABASE_URL!,
+    pool: {
+      min: parseInt(process.env.DB_POOL_MIN || '2'),
+      max: parseInt(process.env.DB_POOL_MAX || '10'),
+    },
+  },
+  auth: {
+    secret: process.env.NEXTAUTH_SECRET!,
+    url: process.env.NEXTAUTH_URL!,
+  },
+  api: {
+    baseUrl: process.env.NEXT_PUBLIC_API_URL!,
+    timeout: parseInt(process.env.API_TIMEOUT || '5000'),
+  },
+} as const;
+
+// Validate environment variables
+Object.entries(config).forEach(([key, value]) => {
+  if (value === undefined) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+});
+```
+
+### Build Optimization
+```typescript
+// next.config.js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  experimental: {
+    // Enable App Router features
+    appDir: true,
+  },
+  images: {
+    domains: ['your-domain.com'],
+    formats: ['image/webp', 'image/avif'],
+  },
+  // Bundle analyzer for production builds
+  ...(process.env.ANALYZE === 'true' && {
+    webpack: (config) => {
+      config.plugins.push(
+        new BundleAnalyzerPlugin({
+          analyzerMode: 'static',
+          openAnalyzer: false,
+        })
+      );
+      return config;
+    },
+  }),
+  // Performance optimizations
+  compress: true,
+  poweredByHeader: false,
+  generateEtags: false,
+};
+
+module.exports = nextConfig;
+```
+
+## Security Best Practices
+
+### Input Validation
+```typescript
+// lib/validations.ts
+import { z } from 'zod';
+
+export const userSchema = z.object({
+  name: z.string().min(1).max(100),
+  email: z.string().email(),
+  age: z.number().min(0).max(120).optional(),
+});
+
+export const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
+// Use in API routes
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+  const validatedData = loginSchema.parse(body);
+  // Process validated data
+}
+```
+
+### Security Headers
+```typescript
+// middleware.ts
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export function middleware(request: NextRequest) {
+  const response = NextResponse.next();
+  
+  // Security headers
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  
+  // Content Security Policy
+  response.headers.set(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+  );
+  
+  return response;
+}
+```
+
+## Performance Monitoring
+
+### Core Web Vitals
+```typescript
+// lib/analytics.ts
+export function trackWebVitals(metric: any) {
+  // Send to analytics service
+  if (metric.label === 'web-vital') {
+    switch (metric.name) {
+      case 'FCP':
+        trackFCP(metric.value);
+        break;
+      case 'LCP':
+        trackLCP(metric.value);
+        break;
+      case 'CLS':
+        trackCLS(metric.value);
+        break;
+      case 'FID':
+        trackFID(metric.value);
+        break;
+      case 'TTFB':
+        trackTTFB(metric.value);
+        break;
+    }
+  }
+}
+
+// Track in _app.tsx or layout.tsx
+export function reportWebVitals(metric: any) {
+  trackWebVitals(metric);
+}
+```
+
+### Application Performance Monitoring
+```typescript
+// lib/monitoring.ts
+export function trackPageView(url: string, title: string) {
+  // Send to analytics service
+  analytics.track('Page View', {
+    url,
+    title,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+export function trackUserAction(action: string, properties?: Record<string, any>) {
+  analytics.track(action, {
+    ...properties,
+    timestamp: new Date().toISOString(),
+  });
+}
+```
+
+## Code Quality & Standards
+
+### TypeScript Best Practices & Type Definitions
+```typescript
+// Strict TypeScript configuration
+// tsconfig.json should include:
+// - strict: true
+// - noImplicitAny: true
+// - strictNullChecks: true
+// - exactOptionalPropertyTypes: true
+// - noUncheckedIndexedAccess: true
+// - useUnknownInCatchVariables: true
+
+// Core type definitions
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  department: Department;
+  avatar?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  lastLoginAt?: Date;
+  isActive: boolean;
+  preferences: UserPreferences;
+}
+
+export type UserRole = 'admin' | 'manager' | 'user' | 'guest';
+export type Department = 'engineering' | 'marketing' | 'sales' | 'hr' | 'finance';
+
+export interface UserPreferences {
+  theme: 'light' | 'dark' | 'system';
+  language: 'en' | 'es' | 'fr' | 'de';
+  notifications: NotificationSettings;
+  timezone: string;
+}
+
+export interface NotificationSettings {
+  email: boolean;
+  push: boolean;
+  sms: boolean;
+  frequency: 'immediate' | 'daily' | 'weekly';
+}
+
+// API response types
+export interface ApiResponse<T> {
+  data: T;
+  message?: string;
+  success: boolean;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
+export interface ApiError {
+  message: string;
+  code: string;
+  statusCode: number;
+  details?: Record<string, any>;
+  timestamp: string;
+}
+
+// Form types with validation
+export interface CreateUserForm {
+  name: string;
+  email: string;
+  role: UserRole;
+  department: Department;
+  password: string;
+  confirmPassword: string;
+}
+
+export interface UpdateUserForm {
+  name?: string;
+  email?: string;
+  role?: UserRole;
+  department?: Department;
+  isActive?: boolean;
+}
+
+// Query parameter types
+export interface UserQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  role?: UserRole;
+  department?: Department;
+  isActive?: boolean;
+  sortBy?: 'name' | 'email' | 'createdAt' | 'lastLoginAt';
+  sortOrder?: 'asc' | 'desc';
+}
+
+// Component prop types
+export interface UserCardProps {
+  user: User;
+  onEdit?: (user: User) => void;
+  onDelete?: (userId: string) => void;
+  onView?: (user: User) => void;
+  showActions?: boolean;
+  variant?: 'default' | 'compact' | 'detailed';
+  className?: string;
+}
+
+export interface UserTableProps {
+  users: User[];
+  onUserSelect?: (user: User) => void;
+  onUserEdit?: (user: User) => void;
+  onUserDelete?: (userId: string) => void;
+  loading?: boolean;
+  error?: string;
+  pagination?: PaginationProps;
+}
+
+export interface PaginationProps {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  onPageChange: (page: number) => void;
+  onItemsPerPageChange?: (itemsPerPage: number) => void;
+}
+
+// Event handler types
+export type FormSubmitHandler<T> = (data: T) => Promise<void> | void;
+export type ClickHandler<T = void> = (event: React.MouseEvent) => T;
+export type ChangeHandler<T = string> = (value: T) => void;
+
+// Utility types
+export type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+};
+
+export type RequiredFields<T, K extends keyof T> = T & Required<Pick<T, K>>;
+
+export type OptionalFields<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+
+export type NonNullableFields<T> = {
+  [P in keyof T]: NonNullable<T[P]>;
+};
+
+// Generic component types
+export interface BaseComponentProps {
+  className?: string;
+  children?: React.ReactNode;
+  'data-testid'?: string;
+}
+
+export interface LoadingState {
+  isLoading: boolean;
+  error?: string | null;
+}
+
+export interface AsyncState<T> extends LoadingState {
+  data?: T;
+}
+
+// Hook return types
+export interface UseUsersReturn extends AsyncState<User[]> {
+  users: User[];
+  refetch: () => void;
+  hasNextPage: boolean;
+  fetchNextPage: () => void;
+  isFetchingNextPage: boolean;
+}
+
+export interface UseUserReturn extends AsyncState<User> {
+  user: User | undefined;
+  refetch: () => void;
+  updateUser: (data: UpdateUserForm) => Promise<void>;
+  deleteUser: () => Promise<void>;
+}
+
+// Mantine UI specific types
+export interface MantineTheme {
+  colorScheme: 'light' | 'dark';
+  primaryColor: string;
+  fontFamily: string;
+  spacing: Record<string, number>;
+  breakpoints: Record<string, number>;
+}
+
+// TanStack Query types
+export interface QueryConfig {
+  staleTime?: number;
+  gcTime?: number;
+  retry?: boolean | number | ((failureCount: number, error: Error) => boolean);
+  refetchOnWindowFocus?: boolean;
+  refetchOnMount?: boolean;
+  refetchOnReconnect?: boolean;
+}
+
+export interface MutationConfig<TData, TError, TVariables> {
+  onSuccess?: (data: TData, variables: TVariables, context: any) => void;
+  onError?: (error: TError, variables: TVariables, context: any) => void;
+  onMutate?: (variables: TVariables) => Promise<any> | any;
+  onSettled?: (data: TData | undefined, error: TError | null, variables: TVariables, context: any) => void;
+}
+
+// Error types
+export class ValidationError extends Error {
+  constructor(
+    message: string,
+    public field: string,
+    public value: any
+  ) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public statusCode: number,
+    public code?: string,
+    public details?: Record<string, any>
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+// Type guards
+export function isUser(obj: any): obj is User {
+  return (
+    obj &&
+    typeof obj.id === 'string' &&
+    typeof obj.email === 'string' &&
+    typeof obj.name === 'string' &&
+    typeof obj.role === 'string' &&
+    typeof obj.department === 'string' &&
+    obj.createdAt instanceof Date
+  );
+}
+
+export function isApiError(error: any): error is ApiError {
+  return error instanceof ApiError;
+}
+
+export function isValidationError(error: any): error is ValidationError {
+  return error instanceof ValidationError;
+}
+
+// Const assertions for better type inference
+export const USER_ROLES = ['admin', 'manager', 'user', 'guest'] as const;
+export const DEPARTMENTS = ['engineering', 'marketing', 'sales', 'hr', 'finance'] as const;
+export const THEMES = ['light', 'dark', 'system'] as const;
+export const LANGUAGES = ['en', 'es', 'fr', 'de'] as const;
+
+// Use satisfies operator for type validation
+export const API_ENDPOINTS = {
+  users: '/api/users',
+  auth: '/api/auth',
+  uploads: '/api/uploads',
+} as const satisfies Record<string, string>;
+
+export const DEFAULT_PAGINATION = {
+  page: 1,
+  limit: 20,
+  maxLimit: 100,
+} as const satisfies {
+  page: number;
+  limit: number;
+  maxLimit: number;
+};
+
+// Generic utility functions with proper typing
+export function createApiUrl<T extends Record<string, any>>(
+  baseUrl: string,
+  params: T
+): string {
+  const url = new URL(baseUrl, window.location.origin);
+  
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      url.searchParams.append(key, String(value));
+    }
+  });
+  
+  return url.toString();
+}
+
+export function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout;
+  
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+}
+
+export function throttle<T extends (...args: any[]) => any>(
+  func: T,
+  limit: number
+): (...args: Parameters<T>) => void {
+  let inThrottle: boolean;
+  
+  return (...args: Parameters<T>) => {
+    if (!inThrottle) {
+      func(...args);
+      inThrottle = true;
+      setTimeout(() => (inThrottle = false), limit);
+    }
+  };
+}
+```
+
+### TypeScript Best Practices
+```typescript
+// Use strict TypeScript configuration
+// tsconfig.json should include:
+// - strict: true
+// - noImplicitAny: true
+// - strictNullChecks: true
+// - exactOptionalPropertyTypes: true
+
+// Prefer interfaces over types for object shapes
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+}
+
+// Use const assertions for literal types
+const USER_ROLES = ['admin', 'user', 'moderator'] as const;
+type UserRole = typeof USER_ROLES[number];
+
+// Use satisfies operator for type validation
+const config = {
+  api: {
+    baseUrl: 'https://api.example.com',
+    timeout: 5000,
+  },
+} satisfies Config;
+```
+
+### ESLint & Prettier Configuration
+```typescript
+// .eslintrc.js
+module.exports = {
+  extends: [
+    'next/core-web-vitals',
+    '@typescript-eslint/recommended',
+    'prettier',
+  ],
+  rules: {
+    '@typescript-eslint/no-unused-vars': 'error',
+    '@typescript-eslint/no-explicit-any': 'error',
+    'prefer-const': 'error',
+    'no-var': 'error',
+  },
+};
+
+// .prettierrc
+{
+  "semi": true,
+  "trailingComma": "es5",
+  "singleQuote": true,
+  "printWidth": 80,
+  "tabWidth": 2
+}
+```
+
+## Documentation Standards
+
+### Component Documentation
+```typescript
+/**
+ * UserProfile component displays user information in a card format
+ * 
+ * @param user - User object containing profile information
+ * @param onEdit - Callback function when edit button is clicked
+ * @param showActions - Whether to show action buttons (default: true)
+ * 
+ * @example
+ * ```tsx
+ * <UserProfile 
+ *   user={currentUser} 
+ *   onEdit={handleEdit}
+ *   showActions={false}
+ * />
+ * ```
+ */
+export function UserProfile({ 
+  user, 
+  onEdit, 
+  showActions = true 
+}: UserProfileProps) {
+  // Component implementation
+}
+```
+
+### API Documentation
+```typescript
+/**
+ * GET /api/users
+ * 
+ * Retrieves a paginated list of users
+ * 
+ * @param {string} page - Page number (default: 1)
+ * @param {string} limit - Number of users per page (default: 10)
+ * @param {string} search - Search query for filtering users
+ * 
+ * @returns {Promise<{data: User[], pagination: PaginationInfo}>}
+ * 
+ * @example
+ * GET /api/users?page=1&limit=20&search=john
+ */
+export async function GET(request: NextRequest) {
+  // Implementation
+}
+```
+
+## Provider Setup & Configuration
+
+### App Providers Configuration
+```typescript
+// app/providers.tsx
+'use client';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { MantineProvider, createTheme } from '@mantine/core';
+import { Notifications } from '@mantine/notifications';
+import { ModalsProvider } from '@mantine/modals';
+import { SessionProvider } from 'next-auth/react';
+import { useState } from 'react';
+
+// Mantine theme configuration
+const theme = createTheme({
+  primaryColor: 'blue',
+  fontFamily: 'Inter, sans-serif',
+  components: {
+    Button: {
+      defaultProps: {
+        size: 'md',
+        radius: 'md',
+      },
+    },
+    Input: {
+      defaultProps: {
+        size: 'md',
+        radius: 'md',
+      },
+    },
+  },
+});
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 5 * 60 * 1000, // 5 minutes
+            gcTime: 10 * 60 * 1000, // 10 minutes
+            retry: (failureCount, error) => {
+              // Don't retry on 4xx errors
+              if (error instanceof Error && 'status' in error && (error as any).status >= 400 && (error as any).status < 500) {
+                return false;
+              }
+              return failureCount < 3;
+            },
+            refetchOnWindowFocus: false,
+          },
+          mutations: {
+            retry: false,
+          },
+        },
+      })
+  );
+
+  return (
+    <SessionProvider>
+      <QueryClientProvider client={queryClient}>
+        <MantineProvider theme={theme} defaultColorScheme="light">
+          <ModalsProvider>
+            <Notifications position="top-right" />
+            {children}
+          </ModalsProvider>
+        </MantineProvider>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </SessionProvider>
+  );
+}
+```
+
+### Root Layout Integration
+```typescript
+// app/layout.tsx
+import { Providers } from './providers';
+import { Inter } from 'next/font/google';
+import './globals.css';
+
+const inter = Inter({ subsets: ['latin'] });
+
+export const metadata = {
+  title: 'Enterprise Application',
+  description: 'A modern, scalable enterprise application built with Next.js',
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body className={inter.className}>
+        <Providers>
+          {children}
+        </Providers>
+      </body>
+    </html>
+  );
+}
+```
+
+### Environment Configuration
+```typescript
+// lib/config.ts
+export const config = {
+  app: {
+    name: process.env.NEXT_PUBLIC_APP_NAME || 'Enterprise App',
+    version: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
+    environment: process.env.NODE_ENV || 'development',
+  },
+  api: {
+    baseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api',
+    timeout: parseInt(process.env.API_TIMEOUT || '10000'),
+    retries: parseInt(process.env.API_RETRIES || '3'),
+  },
+  auth: {
+    secret: process.env.NEXTAUTH_SECRET!,
+    url: process.env.NEXTAUTH_URL!,
+    providers: {
+      google: {
+        clientId: process.env.GOOGLE_CLIENT_ID!,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      },
+      github: {
+        clientId: process.env.GITHUB_CLIENT_ID!,
+        clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+      },
+    },
+  },
+  database: {
+    url: process.env.DATABASE_URL!,
+    pool: {
+      min: parseInt(process.env.DB_POOL_MIN || '2'),
+      max: parseInt(process.env.DB_POOL_MAX || '10'),
+    },
+  },
+  upload: {
+    maxSize: parseInt(process.env.MAX_FILE_SIZE || '10485760'), // 10MB
+    allowedTypes: process.env.ALLOWED_FILE_TYPES?.split(',') || ['image/*', 'application/pdf'],
+    storage: process.env.FILE_STORAGE || 'local',
+  },
+  monitoring: {
+    sentry: {
+      dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+      environment: process.env.NODE_ENV,
+    },
+    analytics: {
+      googleAnalyticsId: process.env.NEXT_PUBLIC_GA_ID,
+      mixpanelToken: process.env.NEXT_PUBLIC_MIXPANEL_TOKEN,
+    },
+  },
+} as const;
+
+// Validate required environment variables
+const requiredEnvVars = [
+  'NEXTAUTH_SECRET',
+  'NEXTAUTH_URL',
+  'DATABASE_URL',
+] as const;
+
+requiredEnvVars.forEach((envVar) => {
+  if (!process.env[envVar]) {
+    throw new Error(`Missing required environment variable: ${envVar}`);
+  }
+});
+
+// Type-safe config access
+export type Config = typeof config;
+export type AppConfig = Config['app'];
+export type ApiConfig = Config['api'];
+export type AuthConfig = Config['auth'];
+export type DatabaseConfig = Config['database'];
+export type UploadConfig = Config['upload'];
+export type MonitoringConfig = Config['monitoring'];
+```
+
+## Summary of Key Principles
+
+1. **Server-First**: Use Server Components by default, Client Components only when necessary
+2. **Performance**: Implement streaming, parallel data fetching, and proper caching with TanStack Query
+3. **Type Safety**: Use TypeScript with strict configuration and comprehensive type definitions
+4. **UI Consistency**: Leverage Mantine UI for complex components and Shadcn UI for base components
+5. **State Management**: Use TanStack Query for server state and React's built-in state for client state
+6. **Security**: Validate all inputs, implement proper authentication, and use security headers
+7. **Testing**: Write comprehensive tests for components, API routes, and integration
+8. **Monitoring**: Track performance metrics and application errors
+9. **Code Quality**: Follow consistent coding standards and use proper tooling
+10. **Documentation**: Document all components, APIs, and architectural decisions
+11. **Scalability**: Design for horizontal scaling and implement proper error handling
+12. **Maintainability**: Use clear naming conventions and modular architecture
+
+## Technology Stack Summary
+
+- **Framework**: Next.js 15+ with App Router
+- **Language**: TypeScript with strict configuration
+- **UI Libraries**: Mantine UI (complex components) + Shadcn UI (base components)
+- **State Management**: TanStack Query (server state) + React hooks (client state)
+- **Styling**: Tailwind CSS for utility-first styling
+- **Authentication**: NextAuth.js with multiple providers
+- **Database**: Prisma ORM with PostgreSQL/MySQL
+- **Validation**: Zod for runtime type validation
+- **Testing**: Jest + React Testing Library
+- **Monitoring**: Sentry for error tracking, analytics for performance
+
+Remember: These rules are designed for medium-to-high scale applications. For smaller projects, you may not need all of these practices, but they provide a solid foundation for building scalable, maintainable applications with modern technologies.
